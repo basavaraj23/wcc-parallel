@@ -1,0 +1,26 @@
+clusterName: wcc-redis
+
+image:
+  repository: docker.io/bitnami/redis
+  tag: 7.2.4-debian-12-r0
+  pullPolicy: IfNotPresent
+
+auth:
+  existingSecret: ""
+  existingSecretPasswordKey: redis-password
+
+service:
+  type: ClusterIP
+
+master:
+  storageClass: ""
+  size: 8Gi
+  resources: {}
+  tolerations: []
+
+replica:
+  replicas: 2
+  storageClass: ""
+  size: 8Gi
+  resources: {}
+  tolerations: []

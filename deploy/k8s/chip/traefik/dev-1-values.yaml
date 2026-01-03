@@ -1,0 +1,9 @@
+---
+metrics:
+  prometheus:
+    serviceMonitor:
+      namespace: wcc-1-dev
+      additionalLabels:
+        release: monitoring-1-stg
+deployment:
+  replicas: 2

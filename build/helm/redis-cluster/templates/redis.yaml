@@ -1,0 +1,204 @@
+{{- if not .Values.auth.existingSecret -}}
+{{- fail "auth.existingSecret must be provided" -}}
+{{- end -}}
+{{- $masterName := include "redis-cluster.masterName" . -}}
+{{- $replicaName := include "redis-cluster.replicaName" . -}}
+{{- $secretName := include "redis-cluster.authSecret" . -}}
+{{- $passKey := include "redis-cluster.passKey" . -}}
+{{- $image := .Values.image -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $masterName }}-headless
+  labels:
+    {{- include "redis-cluster.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    {{- include "redis-cluster.selectorLabels" (dict "component" "master" "context" .) | nindent 4 }}
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $masterName }}
+  labels:
+    {{- include "redis-cluster.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "redis-cluster.selectorLabels" (dict "component" "master" "context" .) | nindent 4 }}
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $masterName }}
+  labels:
+    {{- include "redis-cluster.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ $masterName }}-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "redis-cluster.selectorLabels" (dict "component" "master" "context" .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "redis-cluster.selectorLabels" (dict "component" "master" "context" .) | nindent 8 }}
+    spec:
+      containers:
+        - name: redis
+          image: {{ printf "%s:%s" $image.repository $image.tag }}
+          imagePullPolicy: {{ $image.pullPolicy }}
+          ports:
+            - containerPort: 6379
+              name: redis
+          env:
+            - name: REDIS_REPLICATION_MODE
+              value: master
+            - name: ALLOW_EMPTY_PASSWORD
+              value: "no"
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: {{ $passKey }}
+            - name: REDIS_TLS_ENABLED
+              value: "no"
+          volumeMounts:
+            - name: data
+              mountPath: /bitnami/redis/data
+          {{- with .Values.master.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.master.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 1001
+        runAsUser: 1001
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.master.size }}
+        {{- if .Values.master.storageClass }}
+        storageClassName: {{ .Values.master.storageClass }}
+        {{- end }}
+---
+{{- if gt (int .Values.replica.replicas) 0 }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $replicaName }}-headless
+  labels:
+    {{- include "redis-cluster.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    {{- include "redis-cluster.selectorLabels" (dict "component" "replica" "context" .) | nindent 4 }}
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $replicaName }}
+  labels:
+    {{- include "redis-cluster.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "redis-cluster.selectorLabels" (dict "component" "replica" "context" .) | nindent 4 }}
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $replicaName }}
+  labels:
+    {{- include "redis-cluster.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ $replicaName }}-headless
+  replicas: {{ .Values.replica.replicas }}
+  selector:
+    matchLabels:
+      {{- include "redis-cluster.selectorLabels" (dict "component" "replica" "context" .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "redis-cluster.selectorLabels" (dict "component" "replica" "context" .) | nindent 8 }}
+    spec:
+      containers:
+        - name: redis
+          image: {{ printf "%s:%s" $image.repository $image.tag }}
+          imagePullPolicy: {{ $image.pullPolicy }}
+          ports:
+            - containerPort: 6379
+              name: redis
+          env:
+            - name: REDIS_REPLICATION_MODE
+              value: replica
+            - name: ALLOW_EMPTY_PASSWORD
+              value: "no"
+            - name: REDIS_MASTER_HOST
+              value: {{ $masterName }}
+            - name: REDIS_MASTER_PORT_NUMBER
+              value: "6379"
+            - name: REDIS_MASTER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: {{ $passKey }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: {{ $passKey }}
+            - name: REDIS_TLS_ENABLED
+              value: "no"
+          volumeMounts:
+            - name: data
+              mountPath: /bitnami/redis/data
+          {{- with .Values.replica.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.replica.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 1001
+        runAsUser: 1001
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.replica.size }}
+        {{- if .Values.replica.storageClass }}
+        storageClassName: {{ .Values.replica.storageClass }}
+        {{- end }}
+{{- end }}

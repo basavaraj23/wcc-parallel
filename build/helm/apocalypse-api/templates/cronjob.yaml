@@ -1,0 +1,98 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  labels:
+    {{- include "common.labels" . | nindent 4 }}
+  name: {{ .Chart.Name }}-delete-accounts
+spec:
+  concurrencyPolicy: Allow
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    metadata:
+      creationTimestamp: null
+      labels:
+        {{- include "common.selectorLabels" . | nindent 8 }}
+    spec:
+      template:
+        metadata:
+          annotations:
+            cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+        spec:
+          containers:
+          - command:
+            - /usr/local/bin/node
+            - dist/delete-accounts.js
+            - --profile=firebase
+            - --documents=documents
+            - --casualClans=casualClans
+            {{- if .Values.firebase_audience }}
+            - --firebase-audience={{ .Values.firebase_audience }}
+            {{- end }}
+            env:
+            - name: GCLOUD_PROJECT_ID
+              value: {{ .Values.gcp_project_id }}
+            {{- if .Values.dev }}
+            - name: APOCALYPSE_API_DEV
+              value: {{ .Values.dev | quote }}
+            {{- end }}
+            - name: APOCALYPSE_API_CLUSTER
+              value: {{ .Values.cluster }}
+            - name: APOCALYPSE_API_DOCUMENTS_HOST
+              value: documents.default:80
+            - name: APOCALYPSE_API_ASSET_BUCKET
+              value: {{ .Values.assets_bucket }}
+            - name: APOCALYPSE_API_ASSET_PROVIDER
+              value: aws
+            - name: APOCALYPSE_API_RAW_DATA_URL
+              value: {{ .Values.raw_data_url }}
+            - name: APOCALYPSE_API_TOURNAMENT_SCHEDULE_URL
+              value: {{ .Values.tournament_schedule_url }}
+            - name: APOCALYPSE_API_LIVE_EVENTS_URL
+              value: {{ .Values.live_events_url }}
+            - name: APOCALYPSE_API_TEST_LIVE_EVENTS_URL
+              value: {{ .Values.live_events_test_url }}
+            - name: APOCALYPSE_API_GACHA_TABLES
+              value: {{ .Values.gacha_tables }}
+            - name: APOCALYPSE_API_CARD_BATTLER_URL
+              value: {{ .Values.card_battler_url }}
+            - name: APOCALYPSE_API_CASUAL_CLANS_HOST
+              value: casual-clans.default:80
+            - name: APOCALYPSE_API_ANALYTICS_HOST
+              value: analytics.default:80
+            - name: APOCALYPSE_API_PROFILE_STORAGE
+              value: documents
+            - name: FIREBASE_CONFIG
+              # TODO: Ansible var/value Secret
+              valueFrom:
+                secretKeyRef:
+                  key: json
+                  name: firebase
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /etc/service-account/key.json
+            - name: AWS_REGION
+              value: {{ .Values.aws_region }}
+            image: "{{ .Values.image.repository }}/{{ .Chart.Name }}:{{ .Values.image.tag }}"
+            imagePullPolicy: Always
+            name: "{{ .Chart.Name }}-delete-accounts"
+            resources:
+              requests:
+                cpu: "1"
+                memory: 1600Mi
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            volumeMounts:
+              - mountPath: /etc/service-account
+                name: service-account
+                readOnly: true
+          dnsPolicy: ClusterFirst
+          restartPolicy: Never
+          serviceAccount: {{ .Values.service_account.name }}
+          serviceAccountName: {{ .Values.service_account.name }}
+          terminationGracePeriodSeconds: 60
+          volumes:
+            - name: service-account
+              secret:
+                defaultMode: 420
+                secretName: apocalypse-account-key
+  schedule: 0 4 * * *
+  successfulJobsHistoryLimit: 2

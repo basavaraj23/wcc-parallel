@@ -1,0 +1,6 @@
+dbName: wcc
+appSecretName: wcc-postgresql-auth
+appUser: wcc_app
+storageSize: 1Gi
+storageClass: standard
+tolerations: []

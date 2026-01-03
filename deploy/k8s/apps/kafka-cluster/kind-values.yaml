@@ -1,0 +1,25 @@
+clusterName: wcc-kafka
+replicas: 1
+kafkaVersion: ""
+
+kafkaStorage:
+  type: persistent-claim
+  size: 1Gi
+  class: standard
+  deleteClaim: false
+
+zookeeperStorage:
+  type: persistent-claim
+  size: 1Gi
+  class: standard
+  deleteClaim: false
+
+config:
+  offsetsTopicReplicationFactor: 1
+  transactionStateLogReplicationFactor: 1
+  transactionStateLogMinIsr: 1
+  defaultReplicationFactor: 1
+  autoCreateTopics: true
+
+kafkaTolerations: []
+zookeeperTolerations: []

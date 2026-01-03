@@ -1,0 +1,56 @@
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: "{{ include "appName.helper" . }}-traefik"
+  namespace: {{ include "argocdNamespace.helper" . }}
+spec:
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ include "appNamespace.helper" . }}
+  project: {{ .Values.parentProject }}
+  sources:
+    - repoURL: https://traefik.github.io/charts
+      targetRevision: 36.3.0
+      chart: traefik
+      helm:
+        skipCrds: true
+        valueFiles:
+          - "$values/deploy/k8s/chip/traefik/common-values.yaml"
+          - "$values/deploy/k8s/chip/traefik/{{ .Values.clusterEnvironment }}-values.yaml"
+        values: |
+          providers:
+            kubernetesIngress:
+              ingressClass: "traefik-{{ include "appNamespace.helper" . }}"
+          service:
+            {{- with .Values.ingress.externalIPs }}
+            externalIPs:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+            instanceLabelOverride: "traefik-{{ include "appNamespace.helper" . }}"
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/instance: '{{ include "appName.helper" . }}-traefik-{{ include "appNamespace.helper" . }}'
+                  topologyKey: kubernetes.io/hostname
+{{- range .Values.sources.git }}
+{{- if .ref }}
+    - repoURL: {{ .repoURL }}
+      targetRevision: {{ .targetRevision }}
+      ref: values
+{{- end }}
+{{- end }}
+  syncPolicy:
+    syncOptions:
+      - ServerSideApply=true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m0s
+      limit: 2
+---
+{{- end }}

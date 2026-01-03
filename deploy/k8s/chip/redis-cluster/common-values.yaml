@@ -1,0 +1,4 @@
+---
+app:
+  name: wcc-redis-cluster
+  index: 1

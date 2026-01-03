@@ -1,0 +1,6 @@
+apiVersion: v2
+description: Minimal Redis master/replica cluster for WCC
+name: redis-cluster
+type: application
+version: 0.1.0
+appVersion: "7.2"

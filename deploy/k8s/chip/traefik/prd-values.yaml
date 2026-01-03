@@ -1,0 +1,11 @@
+---
+deployment:
+  replicas: 3
+
+metrics:
+  prometheus:
+    serviceMonitor:
+      namespace: wcc-1-prd
+      additionalLabels:
+        release: monitoring-1-prd
+

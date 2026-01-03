@@ -1,0 +1,6 @@
+dbName: chip
+appSecretName: chip-postgres-auth
+appUser: chip_user
+storageSize: 5Gi
+storageClass: ""
+tolerations: []

@@ -1,0 +1,7 @@
+---
+metrics:
+  prometheus:
+    serviceMonitor:
+      namespace: wcc-1-sdp
+      additionalLabels:
+        release: monitoring-1-sdp

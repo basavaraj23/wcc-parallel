@@ -1,0 +1,17 @@
+app:
+  name:
+  index:
+  environment:
+
+clusterProvider: ""
+clusterEnvironment: ""
+namespaceOverride:
+parentProject: ""
+sources: {}
+
+ingress:
+  enabled: false
+  additionalDnsNames: []
+  externalIPs: []
+  targetService: {}
+  dnsTargetIPs: []

@@ -1,0 +1,4 @@
+---
+app:
+  name: wcc-postgresql-cluster
+  index: 1

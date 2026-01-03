@@ -1,0 +1,23 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: chip-pg
+spec:
+  instances: 1
+  {{- with .Values.tolerations }}
+  affinity:
+    tolerations:
+      {{- toYaml . | nindent 6 }}
+  {{- end }}
+  imageName: ghcr.io/cloudnative-pg/postgresql:16
+  storage:
+    size: {{ .Values.storageSize }}
+    {{- if .Values.storageClass }}
+    storageClass: {{ .Values.storageClass }}
+    {{- end }}
+  bootstrap:
+    initdb:
+      database: {{ .Values.dbName }}
+      owner: {{ .Values.appUser }}
+      secret:
+        name: {{ .Values.appSecretName }}

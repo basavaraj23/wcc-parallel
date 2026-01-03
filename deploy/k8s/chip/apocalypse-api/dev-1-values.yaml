@@ -1,0 +1,32 @@
+---
+namespaceOverride: wcc-1-dev
+
+app:
+  name: wcc-apocalypse-api
+  index: 1
+  environment: dev
+
+clusterEnvironment: "stg"
+parentProject: "wcc-1-dev"
+
+sources:
+  helm:
+    - repoURL: "https://bitbucket.org/popreachinc/wcc.git"
+      targetRevision: "CHIP-314-wcc-redis-kafka-and-postgresql"
+      path: build/helm/apocalypse-api
+      valueFiles:
+        - $values/deploy/k8s/apps/apocalypse-api/dev-1-values.yaml
+  git:
+    - repoURL: "https://bitbucket.org/popreachinc/wcc.git"
+      targetRevision: "CHIP-314-wcc-redis-kafka-and-postgresql"
+      ref: values
+
+ingress:
+  enabled: true
+  additionalDnsNames: ["wcc-apocalypse-api.wcc-cloud.net"]
+  dnsTargetIPs:
+    - 173.195.212.199
+  targetService:
+    name: wcc-apocalypse-api-external
+    port: 80
+    scheme: http

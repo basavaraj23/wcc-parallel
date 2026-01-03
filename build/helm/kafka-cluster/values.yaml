@@ -1,0 +1,25 @@
+clusterName: chip-kafka
+replicas: 1
+kafkaVersion: ""
+
+kafkaStorage:
+  type: persistent-claim
+  size: 5Gi
+  class: ""
+  deleteClaim: false
+
+zookeeperStorage:
+  type: persistent-claim
+  size: 5Gi
+  class: ""
+  deleteClaim: false
+
+config:
+  offsetsTopicReplicationFactor: null
+  transactionStateLogReplicationFactor: null
+  transactionStateLogMinIsr: null
+  defaultReplicationFactor: null
+  autoCreateTopics: true
+
+kafkaTolerations: []
+zookeeperTolerations: []

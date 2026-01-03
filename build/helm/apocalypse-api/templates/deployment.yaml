@@ -1,0 +1,293 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    {{- include "common.labels" . | nindent 4 }}
+  name: {{ .Chart.Name }}
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      {{- include "common.selectorLabels" . | nindent 6 }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/path: '/metrics'
+        prometheus.io/port: '3010'
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+      labels:
+        {{- include "common.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsUser: 60981
+        runAsGroup: 60370
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            # Rule 1: Avoid running apocalypse-api pods on the same node as documents pods.
+            - labelSelector:
+                matchLabels:
+                  component: documents
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+      - command:
+        - /usr/local/bin/node
+        # - --perf-basic-prof
+        - dist/index.js
+        # https://github.com/wellplayedgames/infra/blob/master/deployments/packages/apocalypse/templates/apocalypse-api.js#L197
+        - {{ .Values.prod_flag }}
+        - --port={{ .Values.http_pod_port }}
+        - --admin-port=8081
+        - --profile=firebase
+        - --datastore=documents ##https://github.com/wellplayedgames/apocalypse-api/blob/master/src/index.js#L77
+        - --documents=postgres
+        - --rankedAsyncMatchmaking=rankedAsyncMatchmaking
+        - --casualAsyncMatchmaking=casualAsyncMatchmaking
+        - --eventCodec=proto
+        - --errorCodec=proto
+        - --casualClans=casualClans
+        - --notifications=notifications
+        - --players=players
+        - --kafka=kafka
+        - --events=kafka
+        - --ranking=ranker
+        - --analytics=analytics
+        - --flare-api=flare
+        - --profanity-filter=profanities
+        - --playerChanges=playerChanges
+        {{- if .Values.firebase_audience }}
+        - --firebase-audience={{ .Values.firebase_audience }}
+        {{- end }}
+        env:
+        - name: GCLOUD_PROJECT_ID
+          value: {{ .Values.gcp_project_id }}
+        {{- if .Values.dev }}
+        - name: APOCALYPSE_API_DEV
+          value: {{ .Values.dev | quote }}
+        {{- end }}
+        - name: APOCALYPSE_API_CLUSTER
+          value: {{ .Values.cluster }}
+        - name: APOCALYPSE_API_DOCUMENTS_HOST
+          value: documents.default:{{ .Values.http_service_port }}
+        - name: APOCALYPSE_API_BATTLE_SECRET
+          value: {{ .Values.battle_secret }}
+        - name: APOCALYPSE_API_PLAYER_ID_SECRET
+          value: {{ .Values.player_id_secret }}
+        - name: APOCALYPSE_API_ADMIN_ID
+          value: admin
+        - name: APOCALYPSE_API_ADMIN_SECRET
+          value: {{ .Values.admin_secret }}
+        - name: APOCALYPSE_API_ASSET_BUCKET
+          value: {{ .Values.assets_bucket }}
+        - name: APOCALYPSE_API_ASSET_PROVIDER
+          value: aws
+        - name: APOCALYPSE_API_RAW_DATA_URL
+          value: {{ .Values.raw_data_url }}
+        - name: APOCALYPSE_API_TOURNAMENT_SCHEDULE_URL
+          value: {{ .Values.tournament_schedule_url }}
+        - name: APOCALYPSE_API_LIVE_EVENTS_URL
+          value: {{ .Values.live_events_url }}
+        - name: APOCALYPSE_API_TEST_LIVE_EVENTS_URL
+          value: {{ .Values.live_events_test_url }}
+        - name: APOCALYPSE_API_GACHA_TABLES
+          value: {{ .Values.gacha_tables }}
+        - name: APOCALYPSE_API_BATTLE_CALLBACK
+          value: http://{{ .Chart.Name }}/hurtlocker/v1/battle-callback
+        - name: APOCALYPSE_API_USE_LEGACY_HURTLOCKER
+          value: "false"
+        - name: APOCALYPSE_API_CARD_BATTLER_URL
+          value: {{ .Values.card_battler_url }}
+        - name: APOCALYPSE_API_DDNA_COLLECT
+          value: {{ .Values.ddna_collect }}
+        - name: APOCALYPSE_API_RANKED_ASYNC_MATCHMAKING_HOST
+          value: rankedasyncmatchmaking.rankedasyncmatchmaking:{{ .Values.http_service_port }}
+        - name: APOCALYPSE_API_CASUAL_ASYNC_MATCHMAKING_HOST
+          value: casualasyncmatchmaking.casualasyncmatchmaking:{{ .Values.http_service_port }}
+        - name: APOCALYPSE_API_KAFKA_EVENTS_TIMEOUT_MS
+          value: "900000"
+        - name: APOCALYPSE_API_CASUAL_CLANS_HOST
+          value: casual-clans.default:{{ .Values.http_service_port }}
+        - name: APOCALYPSE_API_NOTIFICATIONS_HOST
+          value: notifications.default:{{ .Values.http_service_port }}
+        - name: APOCALYPSE_API_KAFKA_HOST
+          value: {{ .Values.kafka_addr }}
+        - name: APOCALYPSE_API_RANKER_HOST
+          value: ranker.ranker:{{ .Values.http_service_port }}
+        - name: APOCALYPSE_API_ANALYTICS_HOST
+          value: analytics.default:{{ .Values.http_service_port }}
+        - name: APOCALYPSE_API_PROFANITIES_HOST
+          value: profanities.default:{{ .Values.http_service_port }}
+        - name: APOCALYPSE_API_FLARE_AUTH_PASSWORD
+          value: "{{ .Values.external_credentials.flare.auth_password }}"
+        - name: APOCALYPSE_API_FLARE_USER_API
+          value: https://{{ .Values.publishing_platform.user_api }}/games/combatcards
+        - name: APOCALYPSE_API_FLARE_SHOP_API
+          value: https://{{ .Values.publishing_platform.shop_api }}/v2/games/combatcards
+        - name: APOCALYPSE_API_FLARE_PROMO_API
+          value: https://{{ .Values.publishing_platform.promo_api }}/games/combatcards
+        - name: APOCALYPSE_API_FLARE_EVENT_API
+          value: https://{{ .Values.publishing_platform.event_api }}
+        - name: APOCALYPSE_API_FLARE_MESSAGE_API
+          value: https://{{ .Values.publishing_platform.message_api }}/games/combatcards
+        - name: APOCALYPSE_API_FLARE_VOUCHER_API
+          value: https://{{ .Values.publishing_platform.voucher_api }}/games/combatcards
+        - name: APOCALYPSE_API_FLARE_STORE_API
+          value: https://{{ .Values.publishing_platform.store_api }}/games/combatcards
+        {{- if and .Values.spotlight .Values.spotlight.promo_api }}
+        - name: APOCALYPSE_API_SPOTLIGHT_PROMO_API
+          value: https://{{ .Values.spotlight.promo_api }}/games/combatcards
+        {{- end }}
+        - name: APOCALYPSE_API_FLARE_IRON_SOURCE_SECRET
+          value: "{{ .Values.external_credentials.iron_source.secret }}"
+        - name: APOCALYPSE_API_IRON_SOURCE_SECRET
+          value: "{{ .Values.external_credentials.iron_source.secret }}"
+        - name: APOCALYPSE_API_IRON_SOURCE_APP_IOS
+          value: "{{ .Values.external_credentials.iron_source.app_ios }}"
+        - name: APOCALYPSE_API_IRON_SOURCE_APP_ANDROID
+          value: "{{ .Values.external_credentials.iron_source.app_android }}"
+        - name: APOCALYPSE_API_IRON_SOURCE_REWARDED_AD_UNIT_ID_IOS
+          value: "{{ .Values.external_credentials.iron_source.rewarded_ad_unit_id_ios }}"
+        - name: APOCALYPSE_API_IRON_SOURCE_REWARDED_AD_UNIT_ID_ANDROID
+          value: "{{ .Values.external_credentials.iron_source.rewarded_ad_unit_id_android }}"
+        - name: APOCALYPSE_API_USER_QUEUE_SHARDS
+          value: "500"
+        - name: APOCALYPSE_API_PROFILE_STORAGE
+          value: documents
+        - name: TRACE_SAMPLING_RATE
+          value: "0.1"
+        - name: APOCALYPSE_API_COMPRESSION
+          value: "1"
+        - name: APOCALYPSE_API_LOG_LEVEL
+          value: "warn"
+        - name: APOCALYPSE_API_GOOGLE_PLAY_GAMES_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              key: clientId
+              name: gpgs-secret
+        - name: APOCALYPSE_API_GOOGLE_PLAY_GAMES_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: secret
+              name: gpgs-secret
+        - name: APOCALYPSE_API_HURTLOCKER
+          value: openmatch
+        - name: APOCALYPSE_API_OPENMATCH_URI
+          value: om-frontend.open-match:50504
+        - name: APOCALYPSE_API_PLAYER_CHANGES_HOST
+          value: apocalypse-player-changes.apocalypse:{{ .Values.http_service_port }}
+        - name: APOCALYPSE_API_REDIS
+          value: redis://{{ .Values.ranker_redis_addr }}
+        - name: APOCALYPSE_API_KAFKA_GROUP
+          value: games.wellplayed.apocalypseapi
+        - name: APOCALYPSE_API_HURTLOCKER_REDIS_PAYLOAD
+          value: "true" # config.hurtlockerRedisPayload? ""
+        - name: APOCALYPSE_API_STEAM_API_KEY
+          value: "{{ .Values.external_credentials.steam.api_key }}"
+        - name: APOCALYPSE_API_STEAM_APP_ID
+          value: "{{ .Values.external_credentials.steam.app_id }}"
+        - name: APOCALYPSE_API_POSTGRES_ADDR
+          value: '{{ .Values.aurora_endpoint }}'
+        - name: APOCALYPSE_API_POSTGRES_READONLY_ADDR
+          value: '{{ .Values.aurora_ro_endpoint }}'
+        - name: APOCALYPSE_API_MAX_DB_CONNECTIONS
+          value: '{{ .Values.max_connections }}'
+        - name: APOCALYPSE_API_DB_USER
+          value: 'wcc'
+        - name: APOCALYPSE_API_DB_AUTH
+          valueFrom:
+            secretKeyRef:
+               key: password
+               name: aurora-db-password
+        - name: APOCALYPSE_API_DB_IDLE_TIMEOUT
+          value: '{{ .Values.db_idle_timeout }}'
+        - name: APOCALYPSE_API_WEBSTORE_USER
+          value: '{{ .Values.webstore_user }}'
+        - name: APOCALYPSE_API_WEBSTORE_PASS
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: webstore-pass
+        - name: FIREBASE_CONFIG
+          # TODO: Ansible var/value Secret
+          valueFrom:
+            secretKeyRef:
+              key: json
+              name: firebase
+        - name: APPLE_REVOKE_CONFIG
+          valueFrom:
+            secretKeyRef:
+              key: json
+              name: apple-revoke
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /etc/service-account/key.json
+        - name: AWS_REGION
+          value: {{ .Values.aws_region }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: Always
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - sleep 30; done
+        livenessProbe:
+          failureThreshold: 15
+          httpGet:
+            path: /
+            port: {{ .Values.http_pod_port }}
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: {{ .Chart.Name }}
+        ports:
+        - containerPort: 3010
+          name: metrics
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: {{ .Values.http_pod_port }}
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/service-account
+          name: service-account
+          readOnly: true
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      serviceAccount: {{ .Values.service_account.name }}
+      serviceAccountName: {{ .Values.service_account.name }}
+      terminationGracePeriodSeconds: 60
+      volumes:
+      - name: service-account
+        secret:
+          defaultMode: 420
+          secretName: apocalypse-account-key
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

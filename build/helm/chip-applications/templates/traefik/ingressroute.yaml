@@ -1,0 +1,43 @@
+{{- if .Values.ingress.enabled }}
+{{- $namespace := include "appNamespace.helper" . }}
+{{- $stackSettings := lookup "v1" "Secret" $namespace "stack-settings" }}
+{{- $cluster_env := index $stackSettings.data "cluster_env" | b64dec }}
+{{- $stack_domain_name := index $stackSettings.data "stack_domain_name" | b64dec }}
+{{- $app_short_dns := printf "%s.%s" .Values.app.name $stack_domain_name }}
+{{- $app_long_dns := printf "%s.%s.%s" .Values.app.name $namespace $stack_domain_name }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: "{{ include "appName.helper" . }}-ingressroute"
+  namespace: {{ $namespace }}
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: "{{ $app_short_dns }},{{ $app_long_dns }}"
+    external-dns.alpha.kubernetes.io/target: '{{ include "externalDnsTarget.helper" . }}'
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: "Host(`{{ $app_short_dns }}`) || Host(`{{ $app_long_dns }}`)"
+      kind: Rule
+      services:
+        - name: {{ .Values.ingress.targetService.name }}
+          port: {{ .Values.ingress.targetService.port }}
+          scheme: {{ .Values.ingress.targetService.scheme }}
+{{- range .Values.ingress.additionalDnsNames }}
+    - match: "Host(`{{ . }}`)"
+      kind: Rule
+      services:
+        - name: {{ $.Values.ingress.targetService.name }}
+          port: {{ $.Values.ingress.targetService.port }}
+          scheme: {{ $.Values.ingress.targetService.scheme }}
+{{- end }}
+  tls:
+{{- if .Values.ingress.additionalDnsNames }}
+    secretName: {{ include "additionalCertName.helper" . }}
+{{- else }}
+    secretName: {{ $namespace }}-certificate
+{{- end }}
+---
+{{- end }}
+

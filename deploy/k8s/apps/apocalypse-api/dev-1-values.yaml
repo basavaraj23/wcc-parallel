@@ -1,0 +1,62 @@
+# deploy/k8s/apps/apocalypse-api/dev-1-values.yaml
+
+# ---- non-secret runtime config ----
+prod_flag: "--dev"
+http_pod_port: 8080
+http_service_port: 80
+aws_region: eu-west-1
+
+image:
+  repository: "088656059522.dkr.ecr.eu-west-1.amazonaws.com/apocalypse-api"
+  tag: "242bf2b6aa390bbf79dbf6356e09b8dd521c5b96"
+
+service_account:
+  name: "apocalypse-api"
+
+resources:
+  requests:
+    cpu: "250m"
+    memory: "512Mi"
+  limits:
+    cpu: "1000m"
+    memory: "1Gi"
+
+# ---- External Secrets Operator config ----
+externalSecrets:
+  enabled: true
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-ssm
+    kind: ClusterSecretStore
+
+  # Separate SSM params (full value is the secret)
+  ssm:
+    apple_revoke_param: "/wcc/apple_revoke"                       # expected to contain JSON string
+    firebase_param: "/wcc/firebase/dev"                           # expected to contain JSON string
+    gcp_service_account_param: "/wcc/apoc_gcp_service_account/dev" # expected to contain JSON string (service account)
+
+    # Stack settings JSON param for the rest
+    stack_settings_param: "/wcc-dev-1/stack_settings"
+
+  # JSON property paths INSIDE stack_settings for items that are not split yet
+  stackSettingsProps:
+    # gpgs-secret
+    gpgs_client_id: "gpgs.clientId"
+    gpgs_secret: "gpgs.secret"
+
+    # aurora-db-password + other db props if needed
+    aurora_db_password: "db_cluster.wcc_password"   # or db_cluster.master_password if that's what you intend
+    # optional useful endpoints (if you later want envFrom, etc.)
+    aurora_endpoint: "db_cluster.endpoint"
+    aurora_reader_endpoint: "db_cluster.reader_endpoint"
+
+    # webstore-pass
+    webstore_pass: "webstore.pass"
+
+tolerations:
+  - key: "pool"
+    operator: "Equal"
+    value: "default"
+    effect: "NoSchedule"
+imagePullSecrets:
+  - name: wcc-aws-docker-ecr-credentials

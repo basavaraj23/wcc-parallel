@@ -1,0 +1,10 @@
+dbName: wcc
+appSecretName: wcc-postgresql-auth
+appUser: wcc_app
+storageSize: 8Gi
+storageClass: openebs-zfs-localpv
+tolerations:
+  - key: "pool"
+    operator: "Equal"
+    value: "default"
+    effect: "NoSchedule"

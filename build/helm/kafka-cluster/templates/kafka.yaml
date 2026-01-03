@@ -1,0 +1,82 @@
+{{- $replicas := int .Values.replicas -}}
+{{- $isSingleBroker := lt $replicas 3 -}}
+{{- $cfg := .Values.config | default dict -}}
+{{- $kafkaStorage := .Values.kafkaStorage | default dict -}}
+{{- $zookeeperStorage := .Values.zookeeperStorage | default dict -}}
+{{- $kafkaStorageType := $kafkaStorage.type | default "ephemeral" -}}
+{{- $zookeeperStorageType := $zookeeperStorage.type | default "ephemeral" -}}
+{{- $offsetsRF := $cfg.offsetsTopicReplicationFactor | default (ternary 1 3 $isSingleBroker) -}}
+{{- $txnRF := $cfg.transactionStateLogReplicationFactor | default (ternary 1 3 $isSingleBroker) -}}
+{{- $txnISR := $cfg.transactionStateLogMinIsr | default (ternary 1 2 $isSingleBroker) -}}
+{{- $defaultRF := $cfg.defaultReplicationFactor | default (ternary 1 3 $isSingleBroker) -}}
+{{- $autoTopics := $cfg.autoCreateTopics | default true -}}
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: {{ .Values.clusterName }}
+spec:
+  kafka:
+    {{- if .Values.kafkaVersion }}
+    version: {{ .Values.kafkaVersion | quote }}
+    {{- end }}
+    replicas: {{ $replicas }}
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+    config:
+      offsets.topic.replication.factor: {{ $offsetsRF }}
+      transaction.state.log.replication.factor: {{ $txnRF }}
+      transaction.state.log.min.isr: {{ $txnISR }}
+      default.replication.factor: {{ $defaultRF }}
+      auto.create.topics.enable: {{ ternary "true" "false" $autoTopics }}
+    storage:
+{{- if eq $kafkaStorageType "ephemeral" }}
+      type: ephemeral
+{{- else }}
+      type: persistent-claim
+      size: {{ $kafkaStorage.size | default "5Gi" }}
+      {{- if $kafkaStorage.class }}
+      class: {{ $kafkaStorage.class }}
+      {{- end }}
+      deleteClaim: {{ default false $kafkaStorage.deleteClaim }}
+{{- end }}
+    {{- with .Values.kafkaTolerations }}
+    template:
+      pod:
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+    {{- end }}
+  zookeeper:
+    replicas: {{ min 3 $replicas }}
+    storage:
+{{- if eq $zookeeperStorageType "ephemeral" }}
+      type: ephemeral
+{{- else }}
+      type: persistent-claim
+      size: {{ $zookeeperStorage.size | default "5Gi" }}
+      {{- if $zookeeperStorage.class }}
+      class: {{ $zookeeperStorage.class }}
+      {{- end }}
+      deleteClaim: {{ default false $zookeeperStorage.deleteClaim }}
+{{- end }}
+    {{- with .Values.zookeeperTolerations }}
+    template:
+      pod:
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+    {{- end }}
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: chip-moves
+  labels:
+    strimzi.io/cluster: {{ .Values.clusterName }}
+spec:
+  partitions: 3
+  replicas: {{ min 3 $replicas }}

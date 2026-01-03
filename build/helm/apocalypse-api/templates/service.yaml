@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    {{- include "common.labels" . | nindent 4 }}
+  annotations:
+    service.kubernetes.io/topology-mode: "auto"
+spec:
+  type: ClusterIP
+  ipFamilyPolicy: SingleStack
+  sessionAffinity: None
+  ports:
+  - name: http
+    port: {{ .Values.http_service_port }}
+    protocol: TCP
+    targetPort: {{ .Values.http_pod_port }}
+  - name: metrics
+    port: 3010
+    protocol: TCP
+    targetPort: 3010
+  selector:
+    {{- include "common.selectorLabels" . | nindent 4 }}

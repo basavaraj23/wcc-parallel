@@ -1,0 +1,17 @@
+---
+namespaceOverride: wcc-1-dev
+
+clusterEnvironment: "stg"
+parentProject: "wcc-1-dev"
+
+sources:
+  helm:
+    - repoURL: "https://bitbucket.org/popreachinc/wcc.git"
+      targetRevision: "CHIP-314-wcc-redis-kafka-and-postgresql"
+      path: build/helm/redis-cluster
+      valueFiles:
+        - $values/deploy/k8s/apps/redis-cluster/dev-1-values.yaml
+  git:
+    - repoURL: "https://bitbucket.org/popreachinc/wcc.git"
+      targetRevision: "CHIP-314-wcc-redis-kafka-and-postgresql"
+      ref: values

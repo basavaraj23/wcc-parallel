@@ -1,0 +1,43 @@
+
+# -- The values to be passed to the traefik chart.
+logs:
+  general:
+    # Supported Log Levels see here: https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml#L361
+    level: "ERROR"
+  # Enabled access logs to STDOUT for debugging visibility, could also be switched to a file see here: https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml#L371
+  access:
+    enabled: true
+    # Supported access log formats see here: https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml#L370
+    format: "common"
+rbac:
+  namespaced: true
+service:
+  type: LoadBalancer
+additionalArguments:
+  # This was needed to let the traefik API/Dashboard be reachable via the dedicated port 8080 (which we do not expose)
+  - "--api.insecure=true"
+  # observability metrics via the dedicated entrypoint values got ignored, so it needed to be done via additionalArguments
+  - "--entryPoints.web.observability.metrics=true"
+  - "--entryPoints.websecure.observability.metrics=true"
+  - "--entryPoints.metrics.observability.metrics=true"
+tolerations:
+  - key: "pool"
+    operator: "Equal"
+    value: "default"
+    effect: "NoSchedule"
+
+affinity: {}
+ingressClass:
+  enabled: false
+
+metrics:
+  prometheus:
+    enabled: true
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
+    buckets: "0.1,0.3,1.2,5.0"
+    service:
+      enabled: true
+    serviceMonitor:
+      enabled: true

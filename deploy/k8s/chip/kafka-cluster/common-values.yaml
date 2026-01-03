@@ -1,0 +1,4 @@
+---
+app:
+  name: wcc-kafka-cluster
+  index: 1

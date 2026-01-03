@@ -1,0 +1,19 @@
+clusterName: wcc-redis
+
+auth:
+  existingSecret: wcc-redis-auth
+  existingSecretPasswordKey: redis-password
+
+service:
+  type: ClusterIP
+
+master:
+  size: 1Gi
+  storageClass: standard
+  tolerations: []
+
+replica:
+  replicas: 1
+  size: 1Gi
+  storageClass: standard
+  tolerations: []

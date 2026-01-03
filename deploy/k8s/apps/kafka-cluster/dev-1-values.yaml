@@ -1,0 +1,34 @@
+clusterName: wcc-kafka
+replicas: 3
+kafkaVersion: ""
+
+kafkaStorage:
+  type: persistent-claim
+  size: 8Gi
+  class: openebs-zfs-localpv
+  deleteClaim: false
+
+zookeeperStorage:
+  type: persistent-claim
+  size: 8Gi
+  class: openebs-zfs-localpv
+  deleteClaim: false
+
+config:
+  offsetsTopicReplicationFactor: 3
+  transactionStateLogReplicationFactor: 3
+  transactionStateLogMinIsr: 2
+  defaultReplicationFactor: 3
+  autoCreateTopics: true
+
+kafkaTolerations:
+  - key: "pool"
+    operator: "Equal"
+    value: "default"
+    effect: "NoSchedule"
+
+zookeeperTolerations:
+  - key: "pool"
+    operator: "Equal"
+    value: "default"
+    effect: "NoSchedule"

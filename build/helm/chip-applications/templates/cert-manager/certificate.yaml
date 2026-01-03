@@ -1,0 +1,25 @@
+{{- if and .Values.ingress.enabled (gt (len (default (list) .Values.ingress.additionalDnsNames)) 0) }}
+{{- $namespace := include "appNamespace.helper" . }}
+{{- $stackSettings := lookup "v1" "Secret" $namespace "stack-settings" }}
+{{- $stack_domain_name := index $stackSettings.data "stack_domain_name" | b64dec }}
+{{- $app_short_dns := printf "%s.%s" .Values.app.name $stack_domain_name }}
+{{- $app_long_dns := printf "%s.%s.%s" .Values.app.name $namespace $stack_domain_name }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "additionalCertName.helper" . }}
+  namespace: "{{ $namespace }}"
+spec:
+  secretName: {{ include "additionalCertName.helper" . }}
+  issuerRef:
+    name: "{{ $namespace }}-cert-issuer"
+    kind: Issuer
+  dnsNames:
+    - {{ $app_short_dns }}
+    - {{ $app_long_dns }}
+    {{- range .Values.ingress.additionalDnsNames }}
+    - {{ . }}
+    {{- end }}
+---
+{{- end }}

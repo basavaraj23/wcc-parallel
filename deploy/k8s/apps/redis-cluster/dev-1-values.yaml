@@ -1,0 +1,24 @@
+clusterName: wcc-redis
+
+auth:
+  existingSecret: wcc-redis-auth
+  existingSecretPasswordKey: redis-password
+
+master:
+  size: 8Gi
+  storageClass: openebs-zfs-localpv
+  tolerations:
+    - key: "pool"
+      operator: "Equal"
+      value: "default"
+      effect: "NoSchedule"
+
+replica:
+  replicas: 2
+  size: 8Gi
+  storageClass: openebs-zfs-localpv
+  tolerations:
+    - key: "pool"
+      operator: "Equal"
+      value: "default"
+      effect: "NoSchedule"
