@@ -56,13 +56,13 @@ Seed the datastore secrets in the workload namespace (`wcc-1-dev`) before Argo C
 
 ```bash
 kubectl -n wcc-1-dev create secret generic wcc-redis-auth \\
-  --from-literal=redis-password=local-redis-password
+  --from-literal=redis-password=redis123#
 kubectl -n wcc-1-dev create secret generic wcc-postgresql-auth \\
   --from-literal=username=wcc_app \\
-  --from-literal=password=local-postgres-password
+  --from-literal=password=postgresql123#
 ```
 
-Feel free to replace the sample credentials; keep the secret names and keys so the Kind value files continue to resolve them.
+Feel free to replace the sample credentials (update them to stronger values before sharing code or pushing to remote repos); keep the secret names and keys so the Kind value files continue to resolve them.
 
 ---
 
