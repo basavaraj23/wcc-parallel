@@ -28,13 +28,13 @@ Ensure the following are installed locally:
 If an old cluster exists, delete it first:
 
 ```bash
-kind delete cluster --name wcc
+kind delete cluster --name wcc-parallel
 ````
 
 Create a new cluster:
 
 ```bash
-kind create cluster --name wcc
+kind create cluster --name wcc-parallel
 ```
 
 ---
@@ -45,7 +45,7 @@ Create required namespaces:
 
 ```bash
 kubectl create ns wcc-1-dev || true
-kubectl create namespace argocd
+kubectl create namespace argo-1-stg
 ```
 
 ---
@@ -71,13 +71,13 @@ Feel free to replace the sample credentials (update them to stronger values befo
 Apply the official Argo CD manifest:
 
 ```bash
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/v3.1.9/manifests/install.yaml
+kubectl apply -n argo-1-stg -f https://raw.githubusercontent.com/argoproj/argo-cd/v3.1.9/manifests/install.yaml
 ```
 
 Wait for the Argo CD server to be ready:
 
 ```bash
-kubectl -n argocd rollout status deploy/argocd-server
+kubectl -n argo-1-stg rollout status deploy/argocd-server
 ```
 
 ---
@@ -93,13 +93,13 @@ Deploy the Helm umbrella chart (`chip-applications`) that includes:
 The bundled Kafka chart (`build/helm/kafka-cluster`) targets Strimzi 0.45.0 with the default ZooKeeper ensemble, which matches the operator deployed in this guide.
 
 ```bash
-helm upgrade --install chip-applications ./build/helm/chip-applications -n argocd
+helm upgrade --install chip-applications ./build/helm/chip-applications -n argo-1-stg
 ```
 
 > Make sure Argo CD can reach the GitHub repo first, for example:
 >```bash
 >argocd repo add git@github.com:basavaraj23/wcc-parallel.git \
->  --name wcc --ssh-private-key-path ~/.ssh/id_ed25519_bkittali
+>  --name wcc-parallel --ssh-private-key-path ~/.ssh/id_ed25519_bkittali
 >```
 >Once added, Argo CD will track branch `CHIP-314-wcc-redis-kafka-and-postgresql` (set in the chart values).
 
@@ -107,10 +107,10 @@ If you manage repository credentials via `kubectl`, create the secret instead of
 ```bash
 kubectl create secret generic repo-github-wcc \
   --from-literal=url=git@github.com:basavaraj23/wcc-parallel.git \
-  --from-literal=name=wcc \
+  --from-literal=name=wcc-parallel \
   --from-file=sshPrivateKey=~/.ssh/id_ed25519_bkittali \
-  -n argocd
-kubectl label secret repo-github-wcc argocd.argoproj.io/secret-type=repository -n argocd
+  -n argo-1-stg
+kubectl label secret repo-github-wcc argocd.argoproj.io/secret-type=repository -n argo-1-stg
 ```
 
 With the secret in place, Argo CD pulls chart content from branch `CHIP-314-wcc-redis-kafka-and-postgresql`.
@@ -122,7 +122,7 @@ With the secret in place, Argo CD pulls chart content from branch `CHIP-314-wcc-
 Get the auto-generated admin password:
 
 ```bash
-kubectl -n argocd get secret argocd-initial-admin-secret \
+kubectl -n argo-1-stg get secret argocd-initial-admin-secret \
   -o jsonpath="{.data.password}" | base64 -d; echo
 ```
 
@@ -139,7 +139,7 @@ Example output:
 Port-forward the Argo CD server service:
 
 ```bash
-kubectl -n argocd port-forward svc/argocd-server 8080:443
+kubectl -n argo-1-stg port-forward svc/argocd-server 8080:443
 ```
 
 Access the dashboard at:
@@ -158,17 +158,17 @@ Login credentials:
 List all Argo CD applications:
 
 ```bash
-kubectl -n argocd get applications.argoproj.io
+kubectl -n argo-1-stg get applications.argoproj.io
 ```
 
 Check specific operators:
 
 ```bash
-kubectl -n argocd get applications.argoproj.io | grep -i kafka
-kubectl -n argocd describe application strimzi-operator
-kubectl -n argocd describe application cloudnativepg-operator
-kubectl -n argocd describe application redis
-kubectl -n argocd describe application kafka-cluster
+kubectl -n argo-1-stg get applications.argoproj.io | grep -i kafka
+kubectl -n argo-1-stg describe application strimzi-operator
+kubectl -n argo-1-stg describe application cloudnativepg-operator
+kubectl -n argo-1-stg describe application redis
+kubectl -n argo-1-stg describe application kafka-cluster
 ```
 
 ---
@@ -182,8 +182,8 @@ kubectl -n argocd describe application kafka-cluster
 Track the Argo CD application first:
 
 ```bash
-kubectl -n argocd get applications.argoproj.io service-tests
-kubectl -n argocd describe application service-tests
+kubectl -n argo-1-stg get applications.argoproj.io service-tests
+kubectl -n argo-1-stg describe application service-tests
 ```
 
 Prefer the UI? Port-forward Argo CD and open https://localhost:8080, then inspect the `service-tests` tile.
@@ -223,7 +223,7 @@ Expected namespaces:
 To remove everything:
 
 ```bash
-kind delete cluster --name wcc
+kind delete cluster --name wcc-parallel
 ```
 
 ---
@@ -252,7 +252,7 @@ kind delete cluster --name wcc
 ---
 
 **Author:** Garden City Games — DevOps
-**Cluster Name:** `wcc`
+**Cluster Name:** `wcc-parallel`
 **Last Updated:** October 2025
 
 ```

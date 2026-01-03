@@ -3,7 +3,11 @@
 Define argoCD Namespace
 */}}
 {{- define "argocdNamespace.helper" -}}
-  argo-1-{{ .Values.clusterEnvironment }}
+{{- if .Values.argocdNamespace -}}
+  {{- .Values.argocdNamespace | trim -}}
+{{- else -}}
+  {{- .Release.Namespace | trim -}}
+{{- end -}}
 {{- end }}
 
 {{- define "additionalCert" -}}
@@ -15,10 +19,20 @@ Define argoCD Namespace
 Define Application's name
 */}}
 {{- define "appName.helper" -}}
-  {{- $name := .Values.app.name  -}}
-  {{- $index := .Values.app.index | toString -}}
-  {{- $env := .Values.app.environment | default .Values.clusterEnvironment -}}
-  {{- printf "%s-%s-%s" $name $index $env | trimSuffix "-" -}}
+  {{- $app := default (dict) .Values.app -}}
+  {{- $segments := list -}}
+  {{- $name := default .Release.Name $app.name -}}
+  {{- if $name -}}
+    {{- $segments = append $segments $name -}}
+  {{- end -}}
+  {{- if $app.index -}}
+    {{- $segments = append $segments ($app.index | toString) -}}
+  {{- end -}}
+  {{- $env := default .Values.clusterEnvironment $app.environment -}}
+  {{- if $env -}}
+    {{- $segments = append $segments $env -}}
+  {{- end -}}
+  {{- join "-" $segments | trimSuffix "-" -}}
 {{- end }}
 
 {{/*

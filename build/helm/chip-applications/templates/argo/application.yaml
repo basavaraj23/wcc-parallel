@@ -1,0 +1,56 @@
+{{- if .Values.sources }}
+{{- if .Values.sources.helm }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: "{{ include "appName.helper" . }}"
+  namespace: {{ include "argocdNamespace.helper" . }}
+spec:
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ include "appNamespace.helper" . }}
+  project: {{ required "Values.parentProject is required" .Values.parentProject }}
+  sources:
+{{- range $source := .Values.sources.helm }}
+    - repoURL: {{ required "sources.helm[].repoURL is required" $source.repoURL }}
+      targetRevision: {{ required "sources.helm[].targetRevision is required" $source.targetRevision }}
+{{- if $source.chart }}
+      chart: {{ $source.chart }}
+{{- end }}
+{{- if $source.path }}
+      path: {{ $source.path }}
+{{- end }}
+{{- if $source.valueFiles }}
+      helm:
+        valueFiles:
+{{- range $file := $source.valueFiles }}
+          - {{ $file }}
+{{- end }}
+{{- if $source.helm }}
+{{ toYaml $source.helm | indent 6 }}
+{{- end }}
+{{- else if $source.helm }}
+      helm:
+{{ toYaml $source.helm | indent 8 }}
+{{- end }}
+{{- end }}
+{{- range $git := .Values.sources.git }}
+    - repoURL: {{ required "sources.git[].repoURL is required" $git.repoURL }}
+      targetRevision: {{ required "sources.git[].targetRevision is required" $git.targetRevision }}
+{{- if $git.ref }}
+      ref: {{ $git.ref }}
+{{- end }}
+{{- end }}
+  syncPolicy:
+    syncOptions:
+      - ServerSideApply=true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m0s
+      limit: 2
+---
+{{- end }}
+{{- end }}
