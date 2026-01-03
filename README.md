@@ -96,21 +96,21 @@ The bundled Kafka chart (`build/helm/kafka-cluster`) targets Strimzi 0.45.0 with
 helm upgrade --install chip-applications ./build/helm/chip-applications -n argocd
 ```
 
-> Make sure Argo CD can reach the Bitbucket repo first, for example:
+> Make sure Argo CD can reach the GitHub repo first, for example:
 >```bash
->argocd repo add ssh://git@bitbucket.org/popreachinc/wcc.git \
+>argocd repo add git@github.com:basavaraj23/wcc-parallel.git \
 >  --name wcc --ssh-private-key-path ~/.ssh/bitbucket_key
 >```
 >Once added, Argo CD will track branch `CHIP-314-wcc-redis-kafka-and-postgresql` (set in the chart values).
 
 If you manage repository credentials via `kubectl`, create the secret instead of using the Argo CD CLI:
 ```bash
-kubectl create secret generic repo-bitbucket-wcc \
-  --from-literal=url=ssh://git@bitbucket.org/popreachinc/wcc.git \
+kubectl create secret generic repo-github-wcc \
+  --from-literal=url=git@github.com:basavaraj23/wcc-parallel.git \
   --from-literal=name=wcc \
   --from-file=sshPrivateKey=~/.ssh/bitbucket_key \
   -n argocd
-kubectl label secret repo-bitbucket-wcc argocd.argoproj.io/secret-type=repository -n argocd
+kubectl label secret repo-github-wcc argocd.argoproj.io/secret-type=repository -n argocd
 ```
 
 With the secret in place, Argo CD pulls chart content from branch `CHIP-314-wcc-redis-kafka-and-postgresql`.
