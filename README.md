@@ -45,6 +45,7 @@ Create required namespaces:
 
 ```bash
 kubectl create ns wcc-1-dev || true
+kubectl create ns kafka || true
 kubectl create namespace argo-1-stg
 ```
 
@@ -66,7 +67,44 @@ Feel free to replace the sample credentials (update them to stronger values befo
 
 ---
 
-## Step 3: Install Argo CD
+## Step 2.6: Import Stack Settings Secret
+
+Traefik and certificate templates expect a `stack-settings` secret in `wcc-1-dev`. In production this secret is sourced from AWS Systems Manager Parameter Store at `/wcc-dev-1/stack_settings` (region **eu-west-1**, i.e., Europe/Ireland). Pull it locally and create the matching secret before enabling ingress:
+
+```bash
+aws ssm get-parameter \
+  --name /wcc-dev-1/stack_settings \
+  --region eu-west-1 \
+  --with-decryption \
+  --query 'Parameter.Value' \
+  --output text > /tmp/stack-settings.json
+
+kubectl -n wcc-1-dev create secret generic stack-settings \
+  --from-literal=cluster_env=$(jq -r '.cluster_env' /tmp/stack-settings.json) \
+  --from-literal=stack_domain_name=$(jq -r '.stack_domain_name' /tmp/stack-settings.json)
+```
+
+> Adjust the literal flags if your parameter stores additional keys. Delete `/tmp/stack-settings.json` afterwards.
+
+---
+
+## Step 3: Install Strimzi Kafka Operator (v0.45.0)
+
+Create the operator namespace (already created above, safe to repeat) and apply the pinned manifest:
+
+```bash
+kubectl create ns kafka || true
+curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.45.0/strimzi-0.45.0.yaml \
+  | sed 's/namespace: .*/namespace: kafka/' \
+  | kubectl apply -f -
+kubectl -n kafka rollout status deploy/strimzi-cluster-operator
+```
+
+> The `sed` command scopes the cluster-operator deployment to namespace `kafka`. Update this namespace if you prefer a different target.
+
+---
+
+## Step 4: Install Argo CD
 
 Apply the official Argo CD manifest:
 
@@ -82,7 +120,7 @@ kubectl -n argo-1-stg rollout status deploy/argocd-server
 
 ---
 
-## Step 4: Deploy Applications via Helm
+## Step 5: Deploy Applications via Helm
 
 Deploy the Helm umbrella chart (`chip-applications`) that includes:
 
@@ -117,7 +155,7 @@ With the secret in place, Argo CD pulls chart content from branch `CHIP-314-wcc-
 
 ---
 
-## Step 5: Retrieve Argo CD Admin Password
+## Step 6: Retrieve Argo CD Admin Password
 
 Get the auto-generated admin password:
 
@@ -134,7 +172,7 @@ Example output:
 
 ---
 
-## Step 6: Access Argo CD UI
+## Step 7: Access Argo CD UI
 
 Port-forward the Argo CD server service:
 
@@ -153,7 +191,7 @@ Login credentials:
 
 ---
 
-## Step 7: Verify Application Deployments
+## Step 8: Verify Application Deployments
 
 List all Argo CD applications:
 
@@ -177,7 +215,7 @@ kubectl -n argo-1-stg describe application kafka-cluster
 
 ---
 
-## Step 8: Run Service Smoke Tests (Optional)
+## Step 9: Run Service Smoke Tests (Optional)
 
 Track the Argo CD application first:
 
