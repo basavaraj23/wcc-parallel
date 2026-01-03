@@ -99,7 +99,7 @@ helm upgrade --install chip-applications ./build/helm/chip-applications -n argoc
 > Make sure Argo CD can reach the GitHub repo first, for example:
 >```bash
 >argocd repo add git@github.com:basavaraj23/wcc-parallel.git \
->  --name wcc --ssh-private-key-path ~/.ssh/bitbucket_key
+>  --name wcc --ssh-private-key-path ~/.ssh/id_ed25519_bkittali
 >```
 >Once added, Argo CD will track branch `CHIP-314-wcc-redis-kafka-and-postgresql` (set in the chart values).
 
@@ -108,7 +108,7 @@ If you manage repository credentials via `kubectl`, create the secret instead of
 kubectl create secret generic repo-github-wcc \
   --from-literal=url=git@github.com:basavaraj23/wcc-parallel.git \
   --from-literal=name=wcc \
-  --from-file=sshPrivateKey=~/.ssh/bitbucket_key \
+  --from-file=sshPrivateKey=~/.ssh/id_ed25519_bkittali \
   -n argocd
 kubectl label secret repo-github-wcc argocd.argoproj.io/secret-type=repository -n argocd
 ```
