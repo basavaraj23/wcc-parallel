@@ -184,6 +184,20 @@ Access the dashboard at:
 
 [https://localhost:8080](https://localhost:8080)
 
+Log in via CLI (run in a second terminal after the port-forward starts):
+
+```bash
+argocd login localhost:8080 --username admin --password <initial-password> --insecure
+```
+
+Replace `<initial-password>` with the value from the previous step or inline the command:
+
+```bash
+argocd login localhost:8080 --username admin \
+  --password "$(kubectl -n argo-1-stg get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)" \
+  --insecure
+```
+
 Login credentials:
 
 * **Username:** `admin`
