@@ -44,8 +44,7 @@ kind create cluster --name wcc
 Create required namespaces:
 
 ```bash
-kubectl create ns datastores || true
-kubectl create ns apps || true
+kubectl create ns wcc-1-dev || true
 kubectl create namespace argocd
 ```
 
@@ -193,10 +192,10 @@ The umbrella chart now creates a `service-tests` Argo CD application that provis
 
 1. Wait until the `service-tests` application appears in Argo CD and finishes syncing (it is set to auto-sync).
 2. Check the verification jobs with `kubectl get jobs -A | grep smoketest`.
-3. Inspect the job logs for additional detail, for example `kubectl -n datastores logs job/wcc-pg-test-smoketest` or `kubectl -n kafka logs job/wcc-kafka-smoketest`.
+3. Inspect the job logs for additional detail, for example `kubectl -n wcc-1-dev logs job/wcc-pg-test-smoketest` or `kubectl -n wcc-1-dev logs job/wcc-kafka-smoketest`.
 
 What gets deployed:
-- A CloudNativePG `Cluster` named `wcc-pg-test` (namespace `datastores`) and a job that creates a table, inserts a row, and queries it back.
+- A CloudNativePG `Cluster` named `wcc-pg-test` (namespace `wcc-1-dev`) and a job that creates a table, inserts a row, and queries it back.
 - A Redis smoke-test job that authenticates with the Bitnami release, writes a key, and reads it back.
 - A Strimzi-backed topic (`wcc-test-topic`), SCRAM user, and job that produces and consumes a unique message.
 
@@ -215,7 +214,7 @@ Expected namespaces:
 
 * `cnpg-system` → CloudNativePG Operator
 * `kafka` → Strimzi Operator
-* `datastores` → Redis Operator
+* `wcc-1-dev` → Redis Operator and application workloads
 
 ---
 
