@@ -6,12 +6,12 @@ parentProject: "wcc-kind"
 
 sources:
   helm:
-    - repoURL: "https://bitbucket.org/popreachinc/wcc.git"
-      targetRevision: "CHIP-314-wcc-redis-kafka-and-postgresql"
+    - repoURL: "git@github.com:basavaraj23/wcc-parallel.git"
+      targetRevision: "main"
       path: build/helm/redis-cluster
       valueFiles:
         - $values/deploy/k8s/apps/redis-cluster/kind-values.yaml
   git:
-    - repoURL: "https://bitbucket.org/popreachinc/wcc.git"
-      targetRevision: "CHIP-314-wcc-redis-kafka-and-postgresql"
+    - repoURL: "git@github.com:basavaraj23/wcc-parallel.git"
+      targetRevision: "main"
       ref: values

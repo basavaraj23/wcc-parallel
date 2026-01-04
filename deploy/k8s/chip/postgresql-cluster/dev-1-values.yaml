@@ -6,12 +6,12 @@ parentProject: "wcc-1-dev"
 
 sources:
   helm:
-    - repoURL: "https://bitbucket.org/popreachinc/wcc.git"
-      targetRevision: "CHIP-314-wcc-redis-kafka-and-postgresql"
+    - repoURL: "git@github.com:basavaraj23/wcc-parallel.git"
+      targetRevision: "main"
       path: build/helm/postgresql-cluster
       valueFiles:
         - $values/deploy/k8s/apps/postgresql-cluster/dev-1-values.yaml
   git:
-    - repoURL: "https://bitbucket.org/popreachinc/wcc.git"
-      targetRevision: "CHIP-314-wcc-redis-kafka-and-postgresql"
+    - repoURL: "git@github.com:basavaraj23/wcc-parallel.git"
+      targetRevision: "main"
       ref: values

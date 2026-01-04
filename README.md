@@ -120,26 +120,40 @@ kubectl -n argo-1-stg rollout status deploy/argocd-server
 
 ---
 
-## Step 5: Deploy Applications via Helm
+## Step 5: Deploy Kafka, Redis, and PostgreSQL via Helm
 
-Deploy the Helm umbrella chart (`chip-applications`) that includes:
+`build/helm/chip-applications` is a thin chart that renders an Argo CD `Application`. Install one release per datastore (Kafka, Redis, PostgreSQL) and feed it the matching value files under `deploy/k8s/chip`. Those value files define which Git repository/branch Argo CD syncs (defaults to this GitHub repo on `main`) plus which workload values under `deploy/k8s/apps` should be used when templating the Helm charts in `build/helm/…`.
 
-* CloudNativePG Operator
-* Strimzi Kafka Operator
-* Bitnami Redis
-
-The bundled Kafka chart (`build/helm/kafka-cluster`) targets Strimzi 0.45.0 with the default ZooKeeper ensemble, which matches the operator deployed in this guide.
+Install the three data stores into the Kind environment:
 
 ```bash
-helm upgrade --install chip-applications ./build/helm/chip-applications -n argo-1-stg
+# Kafka (Strimzi cluster + topic)
+helm upgrade --install wcc-kafka-cluster ./build/helm/chip-applications \
+  -n argo-1-stg \
+  -f deploy/k8s/chip/kafka-cluster/common-values.yaml \
+  -f deploy/k8s/chip/kafka-cluster/kind-values.yaml
+
+# Redis (Bitnami image with master/replica statefulsets)
+helm upgrade --install wcc-redis-cluster ./build/helm/chip-applications \
+  -n argo-1-stg \
+  -f deploy/k8s/chip/redis-cluster/common-values.yaml \
+  -f deploy/k8s/chip/redis-cluster/kind-values.yaml
+
+# PostgreSQL (CloudNativePG cluster)
+helm upgrade --install wcc-postgresql-cluster ./build/helm/chip-applications \
+  -n argo-1-stg \
+  -f deploy/k8s/chip/postgresql-cluster/common-values.yaml \
+  -f deploy/k8s/chip/postgresql-cluster/kind-values.yaml
 ```
+
+The bundled Kafka chart (`build/helm/kafka-cluster`) targets Strimzi 0.45.0 with the default ZooKeeper ensemble, which matches the operator deployed in this guide.
 
 > Make sure Argo CD can reach the GitHub repo first, for example:
 >```bash
 >argocd repo add git@github.com:basavaraj23/wcc-parallel.git \
 >  --name wcc-parallel --ssh-private-key-path ~/.ssh/id_ed25519_bkittali
 >```
->Once added, Argo CD will track branch `CHIP-314-wcc-redis-kafka-and-postgresql` (set in the chart values).
+>Once added, Argo CD tracks branch `main` by default (override with `--set sources.helm[0].targetRevision=<branch>` while installing the chart).
 
 If you manage repository credentials via `kubectl`, create the secret instead of using the Argo CD CLI:
 ```bash
@@ -151,7 +165,7 @@ kubectl create secret generic repo-github-wcc \
 kubectl label secret repo-github-wcc argocd.argoproj.io/secret-type=repository -n argo-1-stg
 ```
 
-With the secret in place, Argo CD pulls chart content from branch `CHIP-314-wcc-redis-kafka-and-postgresql`.
+With the secret in place, Argo CD pulls chart content from branch `main`.
 
 ---
 
