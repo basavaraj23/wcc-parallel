@@ -94,11 +94,17 @@ Create the operator namespace (already created above, safe to repeat) and apply 
 
 ```bash
 kubectl create ns kafka || true
-curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.48.0/strimzi-cluster-operator-0.48.0.yaml \
+curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.45.0/strimzi-cluster-operator-0.45.0.yaml \
   | kubectl apply -n kafka -f -
+# Tell the operator to watch the workload namespace
+kubectl -n kafka patch deploy/strimzi-cluster-operator --type='json' \
+  -p='[{"op":"remove","path":"/spec/template/spec/containers/0/env/0/valueFrom"},
+      {"op":"add","path":"/spec/template/spec/containers/0/env/0/value","value":"wcc-1-dev"}]'
+# Grant permissions in the watched namespace
+kubectl apply -f deploy/k8s/strimzi/rbac-watched-namespaces.yaml
 kubectl -n kafka rollout status deploy/strimzi-cluster-operator
 
-# To wipe/reinstall Strimzi, run ./scripts/reset-strimzi.sh before reapplying
+# To wipe/reinstall Strimzi (namespace + CRDs), run ./scripts/reset-strimzi.sh before reapplying
 ```
 
 > Using `kubectl … -n kafka` scopes the cluster-operator deployment to namespace `kafka`. Update this namespace if you prefer a different target.
