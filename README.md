@@ -88,7 +88,7 @@ kubectl -n wcc-1-dev create secret generic stack-settings \
 
 ---
 
-## Step 3: Install Strimzi Kafka Operator (v0.48.0)
+## Step 3: Install Strimzi Kafka Operator (v0.45.0)
 
 Create the operator namespace (already created above, safe to repeat) and apply the pinned manifest:
 
