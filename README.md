@@ -118,6 +118,7 @@ Apply the official Argo CD manifest:
 ```bash
 kubectl apply -n argo-1-stg -f https://raw.githubusercontent.com/argoproj/argo-cd/v3.1.9/manifests/install.yaml
 kubectl apply -f deploy/k8s/argocd/rbac-overrides.yaml
+kubectl apply -f deploy/k8s/argocd/app-projects.yaml
 ```
 
 Wait for the Argo CD server to be ready:
