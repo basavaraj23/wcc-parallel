@@ -94,7 +94,7 @@ Create the operator namespace (already created above, safe to repeat) and apply 
 
 ```bash
 kubectl create ns kafka || true
-curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.45.0/strimzi-0.45.0.yaml \
+curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.45.0/strimzi-cluster-operator-0.45.0.yaml \
   | sed 's/namespace: .*/namespace: kafka/' \
   | kubectl apply -f -
 kubectl -n kafka rollout status deploy/strimzi-cluster-operator
