@@ -97,6 +97,8 @@ kubectl create ns kafka || true
 curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.48.0/strimzi-cluster-operator-0.48.0.yaml \
   | kubectl apply -n kafka -f -
 kubectl -n kafka rollout status deploy/strimzi-cluster-operator
+
+# To wipe/reinstall Strimzi, run ./scripts/reset-strimzi.sh before reapplying
 ```
 
 > Using `kubectl … -n kafka` scopes the cluster-operator deployment to namespace `kafka`. Update this namespace if you prefer a different target.
