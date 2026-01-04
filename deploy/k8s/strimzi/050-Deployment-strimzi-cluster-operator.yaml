@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: strimzi-cluster-operator
+  namespace: kafka
+  labels:
+    app: strimzi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: strimzi-cluster-operator
+      strimzi.io/kind: cluster-operator
+  template:
+    metadata:
+      labels:
+        name: strimzi-cluster-operator
+        strimzi.io/kind: cluster-operator
+    spec:
+      serviceAccountName: strimzi-cluster-operator
+      containers:
+        - name: strimzi-cluster-operator
+          image: quay.io/strimzi/operator:0.48.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: STRIMZI_NAMESPACE
+              value: "wcc-1-dev"
+            - name: STRIMZI_FULL_RECONCILIATION_INTERVAL_MS
+              value: "120000"
+            - name: STRIMZI_OPERATION_TIMEOUT_MS
+              value: "300000"
+            - name: STRIMZI_DEFAULT_KAFKA_EXPORTER_IMAGE
+              value: quay.io/strimzi/kafka:0.48.0-kafka-3.9.0
+            - name: STRIMZI_DEFAULT_CRUISE_CONTROL_IMAGE
+              value: quay.io/strimzi/kafka:0.48.0-kafka-3.9.0
+            - name: STRIMZI_DEFAULT_TOPIC_OPERATOR_IMAGE
+              value: quay.io/strimzi/operator:0.48.0
+            - name: STRIMZI_DEFAULT_USER_OPERATOR_IMAGE
+              value: quay.io/strimzi/operator:0.48.0
+            - name: STRIMZI_DEFAULT_KAFKA_INIT_IMAGE
+              value: quay.io/strimzi/operator:0.48.0
+            - name: STRIMZI_LOG_LEVEL
+              value: INFO
+          ports:
+            - name: http
+              containerPort: 8080
