@@ -1,6 +1,6 @@
 clusterName: chip-kafka
 replicas: 1
-kafkaVersion: ""
+kafkaVersion: "3.8.1"
 
 kafkaStorage:
   type: persistent-claim

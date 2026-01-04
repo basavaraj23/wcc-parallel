@@ -1,6 +1,11 @@
 ---
 namespaceOverride: wcc-1-dev
 
+app:
+  name: wcc-kafka-cluster
+  index: 1
+  environment: dev
+
 clusterEnvironment: "stg"
 parentProject: "wcc-1-dev"
 

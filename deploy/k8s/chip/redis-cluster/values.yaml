@@ -1,4 +1,8 @@
 ---
+app:
+  name: wcc-redis-cluster
+  index: 1
+
 namespaceOverride: wcc-1-dev
 
 clusterEnvironment: "kind"
@@ -8,9 +12,9 @@ sources:
   helm:
     - repoURL: "git@github.com:basavaraj23/wcc-parallel.git"
       targetRevision: "main"
-      path: build/helm/kafka-cluster
+      path: build/helm/redis-cluster
       valueFiles:
-        - $values/deploy/k8s/apps/kafka-cluster/kind-values.yaml
+        - $values/deploy/k8s/apps/redis-cluster/values.yaml
   git:
     - repoURL: "git@github.com:basavaraj23/wcc-parallel.git"
       targetRevision: "main"

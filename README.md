@@ -88,13 +88,13 @@ kubectl -n wcc-1-dev create secret generic stack-settings \
 
 ---
 
-## Step 3: Install Strimzi Kafka Operator (v0.45.0)
+## Step 3: Install Strimzi Kafka Operator (v0.48.0)
 
 Create the operator namespace (already created above, safe to repeat) and apply the pinned manifest:
 
 ```bash
 kubectl create ns kafka || true
-curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.45.0/strimzi-cluster-operator-0.45.0.yaml \
+curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.48.0/strimzi-cluster-operator-0.48.0.yaml \
   | sed 's/namespace: .*/namespace: kafka/' \
   | kubectl apply -f -
 kubectl -n kafka rollout status deploy/strimzi-cluster-operator
@@ -130,23 +130,20 @@ Install the three data stores into the Kind environment:
 # Kafka (Strimzi cluster + topic)
 helm upgrade --install wcc-kafka-cluster ./build/helm/chip-applications \
   -n argo-1-stg \
-  -f deploy/k8s/chip/kafka-cluster/common-values.yaml \
-  -f deploy/k8s/chip/kafka-cluster/kind-values.yaml
+  -f deploy/k8s/chip/kafka-cluster/values.yaml
 
 # Redis (Bitnami image with master/replica statefulsets)
 helm upgrade --install wcc-redis-cluster ./build/helm/chip-applications \
   -n argo-1-stg \
-  -f deploy/k8s/chip/redis-cluster/common-values.yaml \
-  -f deploy/k8s/chip/redis-cluster/kind-values.yaml
+  -f deploy/k8s/chip/redis-cluster/values.yaml
 
 # PostgreSQL (CloudNativePG cluster)
 helm upgrade --install wcc-postgresql-cluster ./build/helm/chip-applications \
   -n argo-1-stg \
-  -f deploy/k8s/chip/postgresql-cluster/common-values.yaml \
-  -f deploy/k8s/chip/postgresql-cluster/kind-values.yaml
+  -f deploy/k8s/chip/postgresql-cluster/values.yaml
 ```
 
-The bundled Kafka chart (`build/helm/kafka-cluster`) targets Strimzi 0.45.0 with the default ZooKeeper ensemble, which matches the operator deployed in this guide.
+The bundled Kafka chart (`build/helm/kafka-cluster`) targets Strimzi 0.48.0 with the default ZooKeeper ensemble and pins Kafka 3.8.1 so it stays on the 3.8.x line while remaining compatible with Kubernetes 1.33.
 
 > Make sure Argo CD can reach the GitHub repo first, for example:
 >```bash

@@ -1,4 +1,8 @@
 ---
+app:
+  name: wcc-postgresql-cluster
+  index: 1
+
 namespaceOverride: wcc-1-dev
 
 clusterEnvironment: "kind"
@@ -10,7 +14,7 @@ sources:
       targetRevision: "main"
       path: build/helm/postgresql-cluster
       valueFiles:
-        - $values/deploy/k8s/apps/postgresql-cluster/kind-values.yaml
+        - $values/deploy/k8s/apps/postgresql-cluster/values.yaml
   git:
     - repoURL: "git@github.com:basavaraj23/wcc-parallel.git"
       targetRevision: "main"
