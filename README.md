@@ -95,12 +95,11 @@ Create the operator namespace (already created above, safe to repeat) and apply 
 ```bash
 kubectl create ns kafka || true
 curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.48.0/strimzi-cluster-operator-0.48.0.yaml \
-  | sed 's/namespace: .*/namespace: kafka/' \
-  | kubectl apply -f -
+  | kubectl apply -n kafka -f -
 kubectl -n kafka rollout status deploy/strimzi-cluster-operator
 ```
 
-> The `sed` command scopes the cluster-operator deployment to namespace `kafka`. Update this namespace if you prefer a different target.
+> Using `kubectl … -n kafka` scopes the cluster-operator deployment to namespace `kafka`. Update this namespace if you prefer a different target.
 
 ---
 
@@ -110,6 +109,7 @@ Apply the official Argo CD manifest:
 
 ```bash
 kubectl apply -n argo-1-stg -f https://raw.githubusercontent.com/argoproj/argo-cd/v3.1.9/manifests/install.yaml
+kubectl apply -f deploy/k8s/argocd/rbac-overrides.yaml
 ```
 
 Wait for the Argo CD server to be ready:
