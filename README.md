@@ -88,26 +88,41 @@ kubectl -n wcc-1-dev create secret generic stack-settings \
 
 ---
 
-## Step 3: Install Strimzi Kafka Operator (v0.45.0)
+## Step 3: Install Datastore CRDs / Operators
 
-Create the operator namespace (already created above, safe to repeat) and apply the pinned manifest:
+Install each operator (and its CRDs) before letting Argo CD reconcile the workloads that depend on them.
+
+### Kafka (Strimzi Operator v0.48.0)
 
 ```bash
 kubectl create ns kafka || true
-curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.45.0/strimzi-cluster-operator-0.45.0.yaml \
+curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.48.0/strimzi-cluster-operator-0.48.0.yaml \
   | kubectl apply -n kafka -f -
-# Tell the operator to watch the workload namespace
 kubectl -n kafka patch deploy/strimzi-cluster-operator --type='json' \
   -p='[{"op":"remove","path":"/spec/template/spec/containers/0/env/0/valueFrom"},
       {"op":"add","path":"/spec/template/spec/containers/0/env/0/value","value":"wcc-1-dev"}]'
-# Grant permissions in the watched namespace
 kubectl apply -f deploy/k8s/strimzi/rbac-watched-namespaces.yaml
 kubectl -n kafka rollout status deploy/strimzi-cluster-operator
 
-# To wipe/reinstall Strimzi (namespace + CRDs), run ./scripts/reset-strimzi.sh before reapplying
+# Optional helper if you need a clean Strimzi re-install (namespace + CRDs)
+./scripts/reset-strimzi.sh
 ```
 
-> Using `kubectl … -n kafka` scopes the cluster-operator deployment to namespace `kafka`. Update this namespace if you prefer a different target.
+> Applying the Strimzi manifest registers all `kafka.strimzi.io/*` CRDs cluster-wide. Patching the deployment narrows the watch namespace to `wcc-1-dev`; adjust if you prefer a different scope.
+
+### PostgreSQL (CloudNativePG Operator v1.23.3)
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/v1.23.3/releases/cnpg-1.23.3.yaml
+kubectl get crds | grep postgresql.cnpg.io
+kubectl -n cnpg-system rollout status deploy/cnpg-controller-manager
+```
+
+The manifest installs the CloudNativePG CRDs (Clusters, Poolers, Backups, etc.) and deploys the controller/webhook in namespace `cnpg-system`. Do not sync Argo apps that create `Cluster` resources until the controller reports `Ready 1/1`.
+
+### Redis (Bitnami)
+
+The Bitnami Redis chart in this repo relies solely on core Kubernetes APIs (StatefulSets, Services, Secrets), so no Redis-specific CRDs are required. Ensure the `wcc-redis-auth` secret from Step 2.5 exists in `wcc-1-dev` before reconciling the Redis release.
 
 ---
 
@@ -290,6 +305,68 @@ Expected namespaces:
 
 ---
 
+## Troubleshooting
+
+### CloudNativePG / PostgreSQL
+
+- **`the server doesn't have a resource type "clusters"`** → the CloudNativePG CRDs are missing. Apply a supported release (example for PG16):
+
+  ```bash
+  kubectl apply -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/v1.23.3/releases/cnpg-1.23.3.yaml
+  ```
+
+  Then confirm the CRDs (`kubectl get crds | grep postgresql.cnpg.io`) before syncing the application that creates `Cluster` objects.
+
+- **Mutating webhook connection refused** while syncing a PostgreSQL `Cluster` means the CNPG operator pods/webhook are not ready. Check `kubectl -n cnpg-system get pods`, inspect their logs, and only sync once the controller is `Ready 1/1`.
+
+- **Operator crash with `no matches for kind "Pooler"`**: older installs sometimes missed the `poolers.postgresql.cnpg.io` CRD. Reapply the release manifest using server-side apply with conflict resolution:
+
+  ```bash
+  kubectl apply --server-side --force-conflicts -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/v1.23.3/releases/cnpg-1.23.3.yaml
+  kubectl -n cnpg-system rollout restart deploy/cnpg-controller-manager
+  ```
+
+  After the restart the controller should register the webhook and allow PostgreSQL clusters to reconcile.
+
+### Strimzi / Kafka
+
+- **Kafka CR synced but no pods appear**: verify the Strimzi operator pod in namespace `kafka` is `Ready`. If it is crash-looping with `Failed to gather environment facts` or `Unable to start operator for 1 or more namespace`, make sure you are running a Strimzi release that matches your Kubernetes version (for Kind v1.33.x use Strimzi 0.48.0 or newer). Upgrade the operator in-place if needed:
+
+  ```bash
+  kubectl create ns kafka || true
+  curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.48.0/strimzi-cluster-operator-0.48.0.yaml \
+    | kubectl apply -n kafka -f -
+  kubectl -n kafka patch deploy/strimzi-cluster-operator --type='json' \
+    -p='[{"op":"replace","path":"/spec/template/spec/containers/0/env/0/value","value":"wcc-1-dev"}]'
+  kubectl apply -f deploy/k8s/strimzi/rbac-watched-namespaces.yaml
+  kubectl -n kafka rollout status deploy/strimzi-cluster-operator
+  ```
+
+  Once the operator pod stays healthy, the Kafka/ZooKeeper StatefulSets in `wcc-1-dev` should reconcile automatically.
+
+- **Operator RBAC errors (`leases … is forbidden`)**: if you install Strimzi via the raw manifest, double-check the rolebindings patched from the template still reference the `kafka` namespace. Update them with:
+
+  ```bash
+  for rb in strimzi-cluster-operator \
+            strimzi-cluster-operator-leader-election \
+            strimzi-cluster-operator-entity-operator-delegation \
+            strimzi-cluster-operator-watched; do
+    kubectl -n kafka patch rolebinding "$rb" \
+      --type=json -p='[{"op":"replace","path":"/subjects/0/namespace","value":"kafka"}]'
+  done
+  ```
+
+  Also ensure the operator service account can hit the `/version` non-resource endpoint:
+
+  ```bash
+  kubectl patch clusterrole strimzi-cluster-operator-global \
+    --type='json' \
+    -p='[{"op":"add","path":"/rules/-","value":{"nonResourceURLs":["/version"],"verbs":["get"]}}]'
+  kubectl -n kafka rollout restart deploy/strimzi-cluster-operator
+  ```
+
+  Once the operator is healthy the Kafka brokers and ZooKeeper pods in `wcc-1-dev` will spin up automatically.
+
 ## Cleanup
 
 To remove everything:
@@ -316,7 +393,7 @@ kind delete cluster --name wcc-parallel
 
 ### References
 
-* [Argo CD Docs](https://argo-cd.readthedocs.io/)
+* [Argo CD Docs](https://argocd.readthedocs.io/)
 * [CloudNativePG Operator](https://cloudnative-pg.io/)
 * [Strimzi Kafka Operator](https://strimzi.io/)
 * [Bitnami Redis Helm Chart](https://bitnami.com/stack/redis/helm)
